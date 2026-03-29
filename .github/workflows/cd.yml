@@ -1,0 +1,79 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - 'README.md'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  release-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate Release Data
+        id: prep
+        run: |
+          JOKE=$(curl -s https://api.chucknorris.io/jokes/random | jq -r .value)
+          echo "joke=$JOKE" >> $GITHUB_OUTPUT
+          
+          VERSION="v1.0.${{ github.run_number }}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          COMMIT_MSG=$(git log -1 --pretty=%B | head -n 1)
+          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
+
+      - name: Update README.md
+        run: |
+          sed -i '/## Latest Release Info/,$d' README.md
+          
+          echo -e "\n## Latest Release Info" >> README.md
+          echo "- **Version:** ${{ steps.prep.outputs.version }}" >> README.md
+          echo "- **PR/Commit Title:** ${{ steps.prep.outputs.commit_msg }}" >> README.md
+          echo "- **Chuck Norris Joke:** ${{ steps.prep.outputs.joke }}" >> README.md
+          
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "docs: update release info [skip ci]" || echo "No changes to commit"
+          git push
+
+      - name: Create Tag and Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.prep.outputs.version }}
+          name: Release ${{ steps.prep.outputs.version }}
+          body: |
+            Trigger: ${{ steps.prep.outputs.commit_msg }}
+            Joke: ${{ steps.prep.outputs.joke }}
+
+      - name: Build App
+        run: |
+          npm ci
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
