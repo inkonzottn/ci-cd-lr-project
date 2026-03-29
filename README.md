@@ -81,7 +81,8 @@ export default defineConfig([
 
 
 
+
 ## Latest Release Info
-- **Version:** v1.0.1
-- **PR/Commit Title:** Add CD pipeline for automated releases and deployment
-- **Chuck Norris Joke:** The number on tombstones aren't years; there just how many times Chuck Norris roundhouse kicked that person in the face.
+- **Version:** v1.0.2
+- **PR/Commit Title:** Add git pull before pushing changes in CD workflow
+- **Chuck Norris Joke:** When Chuck Norris frowns, every human within 3 miles turns inside-out.
